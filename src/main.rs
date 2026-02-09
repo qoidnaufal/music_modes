@@ -502,14 +502,14 @@ impl std::fmt::Debug for Key {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 struct Notes([Base; 8]);
 
 impl Notes {
     /// root is 1
-    fn get_note(&self, num: u8) -> Base {
-        self.0[num as usize % 8]
-    }
+    // fn get_note(&self, num: u8) -> Base {
+    //     self.0[num as usize % 8]
+    // }
 
     fn refine(&mut self) {
         for i in 1..7 {
@@ -541,6 +541,12 @@ impl Notes {
         }
 
         Chords(chords)
+    }
+}
+
+impl std::fmt::Debug for Notes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
@@ -588,20 +594,21 @@ impl Triad {
     }
 }
 
+use std::io::Read;
+
 fn main() -> std::io::Result<()> {
-    let mut buf = String::new();
-    let stdin = std::io::stdin();
+    let mut buf = [0u8; 1024];
+    let mut stdin = std::io::stdin();
 
     loop {
-        buf.clear();
-        let len = stdin.read_line(&mut buf)?;
+        let len = stdin.read(&mut buf)?;
         let cmd = &buf[..len - 1];
 
         match cmd {
-            k if k.starts_with("key") => {
-                let mut iter = k.split_whitespace();
-                let base = iter.nth(1).unwrap();
-                let mode = iter.nth(2).map_or_else(|| Ionian, |m| Mode::from(m));
+            k if k.starts_with(b"key") => {
+                let mut iter = k.split(|bytes| *bytes == b' ');
+                let base = str::from_utf8(iter.nth(1).unwrap()).unwrap();
+                let mode = iter.nth(2).map_or_else(|| Ionian, |m| Mode::from(str::from_utf8(m).unwrap()));
 
                 let key = Key::new(base, mode);
                 let notes = key.get_notes();
@@ -610,7 +617,7 @@ fn main() -> std::io::Result<()> {
                 println!("notes  : {notes:?}");
                 println!("chords : {chords:?}");
             },
-            "exit" => break,
+            b"exit" => break,
             _ => {},
         }
     }
